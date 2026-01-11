@@ -30,7 +30,7 @@ MP3, WAV, OGG, FLAC, M4A, AAC, WMA, OPUS
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/radio-traffic-stitcher.git
+git clone https://github.com/the-data-sherpa/radio-traffic-stitcher.git
 cd radio-traffic-stitcher
 
 # Install dependencies
