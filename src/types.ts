@@ -41,3 +41,34 @@ export const BITRATE_OPTIONS = [
     { label: '256 kbps', value: '256k' },
     { label: '320 kbps', value: '320k' },
 ];
+
+// Export format type
+export type ExportFormat = 'mp3' | 'mp4';
+
+// Image fit mode for video export
+export type ImageFitMode = 'fit' | 'fill';
+
+// Supported image extensions
+export const SUPPORTED_IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
+
+// Video configuration for export
+export interface VideoConfig {
+    image_path: string | null;
+    fit_mode: ImageFitMode;
+}
+
+// Image info from FFprobe
+export interface ImageInfo {
+    width: number;
+    height: number;
+    valid: boolean;
+    error: string | null;
+}
+
+// Background image state
+export interface BackgroundImage {
+    path: string;
+    name: string;
+    width: number;
+    height: number;
+}

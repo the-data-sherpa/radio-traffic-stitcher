@@ -1,6 +1,6 @@
 # Radio Traffic Stitcher
 
-A cross-platform desktop application for combining multiple audio clips into a single MP3 file.
+A cross-platform desktop application for combining multiple audio clips into a single MP3 audio file or MP4 video file.
 
 ![Tauri](https://img.shields.io/badge/Tauri-2.0-blue)
 ![React](https://img.shields.io/badge/React-19-61DAFB)
@@ -13,12 +13,15 @@ A cross-platform desktop application for combining multiple audio clips into a s
 - ↕️ **Reorder Clips** - Drag or use ▲/▼ buttons to arrange order
 - ⏱️ **Duration Display** - See duration and file size for each clip
 - 🎚️ **Quality Settings** - Choose bitrate (128-320 kbps)
-- 🚀 **FFmpeg Powered** - Seamless audio concatenation
+- 🎬 **Video Export** - Export to MP4 with optional background image (1920×1080)
+- 📷 **Image Fit Modes** - Original size centered (Fit) or scale & crop to fill (Fill)
+- 🚀 **FFmpeg Powered** - Seamless audio/video concatenation
 - 🌙 **Modern Dark UI** - Clean interface with glassmorphism effects
 
 ## Supported Formats
 
-MP3, WAV, OGG, FLAC, M4A, AAC, WMA, OPUS
+**Audio:** MP3, WAV, OGG, FLAC, M4A, AAC, WMA, OPUS
+**Images (for video):** PNG, JPG, JPEG, WEBP, GIF
 
 ## Requirements
 
@@ -66,15 +69,17 @@ WEBKIT_DISABLE_COMPOSITING_MODE=1 GDK_BACKEND=x11 ./radio-traffic-stitcher
 
 1. **Add Clips** - Drag audio files or click to browse
 2. **Reorder** - Use ▲/▼ buttons or drag clips to desired order
-3. **Configure** - Set output filename and quality
-4. **Export** - Click "Export to MP3" and choose save location
+3. **Choose Format** - Select MP3 (audio only) or MP4 (video with image)
+4. **Configure** - Set output filename and quality (bitrate)
+5. **For MP4** - Optionally select a background image and choose Fit or Fill mode
+6. **Export** - Click "Export to MP3/MP4" and choose save location
 
 ## Tech Stack
 
 - **[Tauri 2.0](https://tauri.app/)** - Rust-based desktop framework
 - **[React 19](https://react.dev/)** - UI framework
 - **[TypeScript](https://www.typescriptlang.org/)** - Type-safe JavaScript
-- **[FFmpeg](https://ffmpeg.org/)** - Audio processing
+- **[FFmpeg](https://ffmpeg.org/)** - Audio/video processing
 
 ## License
 

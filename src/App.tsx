@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { AudioClip, AudioInfo, StitchResult, SUPPORTED_EXTENSIONS, BITRATE_OPTIONS } from './types';
+import { AudioClip, AudioInfo, StitchResult, SUPPORTED_EXTENSIONS, BITRATE_OPTIONS, ExportFormat, ImageFitMode, VideoConfig, ImageInfo, BackgroundImage, SUPPORTED_IMAGE_EXTENSIONS } from './types';
 import './App.css';
 
 // Check if running in Tauri environment
@@ -47,6 +47,11 @@ function App() {
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [isInTauri, setIsInTauri] = useState(false);
+
+  // Video export state
+  const [exportFormat, setExportFormat] = useState<ExportFormat>('mp3');
+  const [backgroundImage, setBackgroundImage] = useState<BackgroundImage | null>(null);
+  const [imageFitMode, setImageFitMode] = useState<ImageFitMode>('fit');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -145,6 +150,57 @@ function App() {
     }
   };
 
+  // Handle image picker for video background
+  const handleSelectImage = async () => {
+    if (!isInTauri) {
+      showToast('error', 'Image picker requires the Tauri desktop app');
+      return;
+    }
+
+    try {
+      const { open, invoke } = await getTauriApis();
+      const selected = await open({
+        multiple: false,
+        filters: [{
+          name: 'Image Files',
+          extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'],
+        }],
+      });
+
+      if (selected && typeof selected === 'string') {
+        const filename = selected.split(/[/\\]/).pop() || selected;
+        const ext = filename.toLowerCase().substring(filename.lastIndexOf('.'));
+
+        if (!SUPPORTED_IMAGE_EXTENSIONS.includes(ext)) {
+          showToast('error', `Unsupported image format: ${filename}`);
+          return;
+        }
+
+        // Validate image with FFprobe
+        const info = await invoke<ImageInfo>('get_image_info', { path: selected });
+
+        if (info.valid) {
+          setBackgroundImage({
+            path: selected,
+            name: filename,
+            width: info.width,
+            height: info.height,
+          });
+          showToast('success', `Image selected: ${filename}`);
+        } else {
+          showToast('error', info.error || `Invalid image: ${filename}`);
+        }
+      }
+    } catch (error) {
+      showToast('error', `Error selecting image: ${error}`);
+    }
+  };
+
+  // Remove background image
+  const handleRemoveImage = () => {
+    setBackgroundImage(null);
+  };
+
   // Handle drag & drop
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -211,7 +267,7 @@ function App() {
     setDraggedIndex(index);
   };
 
-  // Export audio
+  // Export audio/video
   const handleExport = async () => {
     if (!isInTauri) {
       showToast('error', 'Export requires the Tauri desktop app');
@@ -226,11 +282,15 @@ function App() {
     try {
       const { invoke, save } = await getTauriApis();
 
+      const isVideo = exportFormat === 'mp4';
+      const fileExtension = isVideo ? 'mp4' : 'mp3';
+      const filterName = isVideo ? 'MP4 Video' : 'MP3 Audio';
+
       const outputPath = await save({
-        defaultPath: `${outputName}.mp3`,
+        defaultPath: `${outputName}.${fileExtension}`,
         filters: [{
-          name: 'MP3 Audio',
-          extensions: ['mp3'],
+          name: filterName,
+          extensions: [fileExtension],
         }],
       });
 
@@ -238,14 +298,31 @@ function App() {
 
       setIsProcessing(true);
 
-      const result = await invoke<StitchResult>('stitch_audio', {
-        clips,
-        outputPath,
-        bitrate,
-      });
+      let result: StitchResult;
+
+      if (isVideo) {
+        // Create video configuration
+        const videoConfig: VideoConfig = {
+          image_path: backgroundImage?.path || null,
+          fit_mode: imageFitMode,
+        };
+
+        result = await invoke<StitchResult>('stitch_video', {
+          clips,
+          outputPath,
+          bitrate,
+          videoConfig,
+        });
+      } else {
+        result = await invoke<StitchResult>('stitch_audio', {
+          clips,
+          outputPath,
+          bitrate,
+        });
+      }
 
       if (result.success) {
-        showToast('success', 'Audio exported successfully!');
+        showToast('success', `${isVideo ? 'Video' : 'Audio'} exported successfully!`);
       } else {
         showToast('error', result.error || 'Export failed');
       }
@@ -399,6 +476,87 @@ function App() {
             </div>
           </div>
 
+          {/* Format Selector */}
+          <div className="export-panel__section">
+            <span className="export-panel__label">Export Format</span>
+            <div className="format-toggle">
+              <button
+                className={`format-toggle__btn ${exportFormat === 'mp3' ? 'format-toggle__btn--active' : ''}`}
+                onClick={() => setExportFormat('mp3')}
+              >
+                🎵 MP3
+              </button>
+              <button
+                className={`format-toggle__btn ${exportFormat === 'mp4' ? 'format-toggle__btn--active' : ''}`}
+                onClick={() => setExportFormat('mp4')}
+              >
+                🎬 MP4
+              </button>
+            </div>
+          </div>
+
+          {/* Video Options (shown when MP4 selected) */}
+          {exportFormat === 'mp4' && (
+            <>
+              {/* Background Image */}
+              <div className="export-panel__section">
+                <span className="export-panel__label">Background Image</span>
+                {backgroundImage ? (
+                  <div className="image-preview">
+                    <div className="image-preview__info">
+                      <span className="image-preview__name" title={backgroundImage.name}>
+                        📷 {backgroundImage.name}
+                      </span>
+                      <span className="image-preview__dimensions">
+                        {backgroundImage.width}×{backgroundImage.height}
+                      </span>
+                    </div>
+                    <button
+                      className="image-preview__remove"
+                      onClick={handleRemoveImage}
+                      title="Remove image"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    className="image-picker-btn"
+                    onClick={handleSelectImage}
+                  >
+                    📁 Select Image
+                  </button>
+                )}
+                <div className="export-panel__hint">
+                  Optional: Leave empty for black background
+                </div>
+              </div>
+
+              {/* Image Fit Mode */}
+              {backgroundImage && (
+                <div className="export-panel__section">
+                  <span className="export-panel__label">Image Fit Mode</span>
+                  <div className="fit-mode-toggle">
+                    <button
+                      className={`fit-mode-toggle__btn ${imageFitMode === 'fit' ? 'fit-mode-toggle__btn--active' : ''}`}
+                      onClick={() => setImageFitMode('fit')}
+                      title="Scale to fit, black bars if needed"
+                    >
+                      Fit (Letterbox)
+                    </button>
+                    <button
+                      className={`fit-mode-toggle__btn ${imageFitMode === 'fill' ? 'fit-mode-toggle__btn--active' : ''}`}
+                      onClick={() => setImageFitMode('fill')}
+                      title="Scale to fill, may crop edges"
+                    >
+                      Fill (Crop)
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
           {/* Output name */}
           <div className="export-panel__section">
             <label className="export-panel__label" htmlFor="output-name">
@@ -448,7 +606,7 @@ function App() {
             disabled={clips.length === 0 || isProcessing || !ffmpegStatus?.installed}
           >
             <span className="export-btn__icon">🚀</span>
-            Export to MP3
+            Export to {exportFormat.toUpperCase()}
           </button>
 
           {!ffmpegStatus?.installed && (
@@ -464,9 +622,11 @@ function App() {
         <div className="progress-overlay">
           <div className="progress-modal">
             <div className="progress-modal__spinner"></div>
-            <div className="progress-modal__title">Stitching Audio...</div>
+            <div className="progress-modal__title">
+              {exportFormat === 'mp4' ? 'Creating Video...' : 'Stitching Audio...'}
+            </div>
             <div className="progress-modal__subtitle">
-              Combining {clips.length} clips into MP3
+              Combining {clips.length} clips into {exportFormat.toUpperCase()}
             </div>
           </div>
         </div>
